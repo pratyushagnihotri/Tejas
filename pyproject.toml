@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tejas"
+version = "0.1.0"
+description = "Energy-aware LLM inference routing: measurement, benchmarking, cost modeling, and routing for computation-by-energy."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+]
+
+[project.scripts]
+tejas-run-experiment = "tejas.benchmarking.run_experiment:main"
+tejas-static-policies = "tejas.routing.static_policies:main"
+tejas-evaluate-models = "tejas.cost_model.evaluate_models:main"
+tejas-evaluate-policy = "tejas.routing.evaluate_policy:main"
+tejas-cross-family-transfer = "tejas.cost_model.cross_family_transfer:main"
+tejas-fewshot-calibration = "tejas.cost_model.fewshot_calibration:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"tejas.benchmarking" = ["data/*.csv"]

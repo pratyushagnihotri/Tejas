@@ -1,0 +1,4 @@
+kind,accuracy_mean,accuracy_std,brier_mean,log_loss_mean,protocol,source,target
+histgb,0.7180555555555556,0.07799758127778826,0.21029493639384922,0.8032908810097453,B_unseen_workload,dgx_qwen,dgx_llama
+logreg,0.7277777777777777,0.09634846883625056,0.1969857206590028,0.6914594287703119,B_unseen_workload,dgx_qwen,dgx_llama
+tier_baseline,0.6708333333333333,0.0746810347038955,0.2314751519097222,0.6617737709964403,B_unseen_workload,dgx_qwen,dgx_llama

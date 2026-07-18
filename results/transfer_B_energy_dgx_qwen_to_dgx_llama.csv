@@ -1,0 +1,6 @@
+kind,mae_j_mean,mae_j_std,avg_spearman_mean,min_tier_hit_rate_mean,protocol,source,target
+elasticnet,302.603750366846,133.32030284183762,0.8854903129936512,0.925,B_unseen_workload,dgx_qwen,dgx_llama
+global_mean,369.3887658347801,127.37801692842726,,0.925,B_unseen_workload,dgx_qwen,dgx_llama
+histgb,346.04706855044384,127.2026190440022,0.8854903129936512,0.925,B_unseen_workload,dgx_qwen,dgx_llama
+ridge,304.20663407201846,131.69616326964552,0.8854903129936512,0.925,B_unseen_workload,dgx_qwen,dgx_llama
+tier_lookup,369.3887658347801,127.37801692842726,,0.925,B_unseen_workload,dgx_qwen,dgx_llama

@@ -1,0 +1,6 @@
+kind,mae_j,rmse_log,avg_spearman,min_tier_hit_rate,protocol,source,target
+global_mean,350.72844381944446,1.9478954184708257,,0.875,A_matched_workload,dgx_llama,dgx_qwen
+tier_lookup,350.72844381944446,1.9478954184708257,,0.875,A_matched_workload,dgx_llama,dgx_qwen
+ridge,156.93167542229506,0.9262423362471074,0.8677509411139788,0.875,A_matched_workload,dgx_llama,dgx_qwen
+elasticnet,145.41301535972286,0.9068397193222963,0.8677509411139788,0.875,A_matched_workload,dgx_llama,dgx_qwen
+histgb,304.4542480762611,1.0970940610870286,0.8270982138897294,0.775,A_matched_workload,dgx_llama,dgx_qwen

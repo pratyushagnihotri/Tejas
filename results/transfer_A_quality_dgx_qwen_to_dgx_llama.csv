@@ -1,0 +1,4 @@
+kind,accuracy,brier,log_loss,protocol,source,target
+tier_baseline,0.6708333333333333,0.23040364583333328,0.6584063305927728,A_matched_workload,dgx_qwen,dgx_llama
+logreg,0.7333333333333333,0.1872550369316494,0.6528050830789094,A_matched_workload,dgx_qwen,dgx_llama
+histgb,0.7291666666666666,0.1967810007820813,0.7877819147067476,A_matched_workload,dgx_qwen,dgx_llama

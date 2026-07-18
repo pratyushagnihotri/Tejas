@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+company.db
+
+# Publish all raw + derived results CSVs (reproducibility); figures are
+# regenerable from them via analysis/, so keep those out of the repo.
+results/figures/
+results/*
+!results/*.csv
