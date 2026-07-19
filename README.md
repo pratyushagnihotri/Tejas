@@ -1,4 +1,4 @@
-# Tejas — Energy-Aware LLM Inference Routing
+# Tejas — Energy-Native AI Data Systems
 
 Reference implementation and results for the CIDR 2027 vision paper
 **"Sustainable AI Data Systems: From Computation-on-Demand to
@@ -113,14 +113,6 @@ regenerated from these CSVs rather than committed as binaries:
 ```
 
 See [`docs/FIGURES_GUIDE.md`](docs/FIGURES_GUIDE.md) for what each figure shows and which claim it supports.
-
-## Documentation
-
-- [`docs/RESEARCH_LOG.md`](docs/RESEARCH_LOG.md) — the full chronological research narrative: design decisions, bugs found and fixed, every finding, full numeric results
-- [`docs/ROUTING_README.md`](docs/ROUTING_README.md) — topic-organized (not chronological) system writeup, closest to paper-ready prose
-- [`src/tejas/cost_model/README.md`](src/tejas/cost_model/README.md) — the learned cost model's design rationale, assumptions, and validation methodology in detail
-- [`docs/FIGURES_GUIDE.md`](docs/FIGURES_GUIDE.md) — every figure, what it shows, which claim it supports
-- [`docs/DESIGN_PLAN.md`](docs/DESIGN_PLAN.md) — the original design plan, including two rounds of adversarial methodological review
 
 ## Citation
 
