@@ -1,14 +1,4 @@
-"""Paper-ready figures for the energy cost model results (docs/RESEARCH_LOG.md
-§10). Reuses the project's existing palette/style conventions from
-plot_results.py (MODEL_COLORS, rcParams, _save) rather than inventing a new
-look. New categorical color (learned cost-model policy, #0891b2 teal) was
-checked against the existing palette with dataviz's validate_palette.js —
-passes lightness/chroma/CVD-separation. Oracles are drawn as dashed
-neutral-gray reference markers, not categorical hues — they represent a
-bound, not a competing policy, so they're deliberately excluded from the
-categorical CVD check (a bound isn't meant to be "identified," just seen).
-
-Requires the tejas package installed (`pip install -e .` from the repo
+"""Requires the tejas package installed (`pip install -e .` from the repo
 root). Run after tejas.routing.evaluate_policy has produced
 results/baseline_comparison_<experiment>.csv and
 results/policy_decisions_learned_<experiment>.csv for all three experiments:

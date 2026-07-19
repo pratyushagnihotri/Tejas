@@ -1,14 +1,6 @@
-"""Shared IEEE-style matplotlib config for paper figures, used by both
+""" IEEE-style matplotlib config used by both
 plot_ieee_routing.py (original hand-designed policies) and
-plot_ieee_cost_model.py (learned cost model). Kept as one module so both
-scripts render identically — same fonts, same colors, same sizing rules —
-rather than drifting apart.
-
-Sizes are deliberately generous rather than exact IEEE column widths: the
-priority (per request) is that 11-13pt fonts never overlap or crowd,
-not hitting a precise column-width number. LaTeX can still scale the
-image down via \\includegraphics[width=...]; what matters is the
-font-to-figure-size *ratio* staying legible at that point.
+plot_ieee_cost_model.py (learned cost model).
 """
 
 import matplotlib

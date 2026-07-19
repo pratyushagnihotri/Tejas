@@ -1,5 +1,4 @@
-"""IEEE-style figures for three evaluation questions that previously had
-numbers (docs/RESEARCH_LOG.md SS10) but no plot:
+"""IEEE-style figures for three evaluation questions:
 
 1. Does the cost model actually predict well? (predicted-vs-actual energy,
    quality calibration/reliability curve)
