@@ -11,3 +11,4 @@ company.db
 results/figures/
 results/*
 !results/*.csv
+docs/
