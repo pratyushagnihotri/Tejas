@@ -1,5 +1,7 @@
 # Tejas — Energy-Native AI Data Systems
 
+![Tejas logo](tejas_logo.png)
+
 Reference implementation and results for the CIDR 2027 vision paper
 **"Sustainable AI Data Systems: From Computation-on-Demand to
 Computation-by-Energy."** Tejas measures real per-request LLM inference
