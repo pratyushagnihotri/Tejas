@@ -1,6 +1,10 @@
 # Tejas — Energy-Native AI Data Systems
 
-![Tejas logo](tejas_logo.png)
+<h1 align="center">
+  <img src="tejas_logo.png" alt="Tejas Logo" width="300"/>
+  <br>Welcome to EcoLLM - Code and Documentation
+</h1>
+
 
 Reference implementation and results for the CIDR 2027 vision paper
 **"Sustainable AI Data Systems: From Computation-on-Demand to
