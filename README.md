@@ -2,7 +2,6 @@
 
 <h1 align="center">
   <img src="tejas_logo.png" alt="Tejas Logo" width="300"/>
-  <br>Welcome to EcoLLM - Code and Documentation
 </h1>
 
 
