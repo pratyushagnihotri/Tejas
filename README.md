@@ -1,7 +1,7 @@
 # Tejas — Energy-Native AI Data Systems
 
 <h1 align="center">
-  <img src="tejas_logo.png" alt="Tejas Logo" width="300"/>
+  <img src="tejas_logo.png" alt="Tejas Logo" width="600"/>
 </h1>
 
 
