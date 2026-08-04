@@ -12,3 +12,4 @@ results/figures/
 results/*
 !results/*.csv
 docs/
+src/tejas.egg-info
