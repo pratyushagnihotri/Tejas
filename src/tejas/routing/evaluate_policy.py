@@ -98,7 +98,15 @@ def _inner_oof_predictions(train_df, cat, num, random_state):
     return pred_by_task_tier
 
 
-def _select_config(train_df, cat, num, measured_stats, task_ids, rng):
+def _select_config(train_df, cat, num, measured_stats, task_ids, rng, selection_rule="min_energy"):
+    """selection_rule: "min_energy" is Tejas's actual rule (argmin predicted
+    energy among quality-safe tiers); "smallest_tier" instead picks the
+    smallest quality-safe tier by parameter count, never consulting the
+    energy model's predictions at all. The latter exists only for the
+    ablation that asks whether the energy model contributes anything beyond
+    what the quality gate plus "prefer cheaper" already gives for free —
+    see policy_optimizer.select_from_rows's docstring for the same
+    distinction at the per-task level."""
     pred = _inner_oof_predictions(train_df, cat, num, RNG_SEED)
     ref_tiers = _reference_tiers(train_df)
     candidates = {tid: _candidate_tiers(train_df, tid) for tid in task_ids}
@@ -128,11 +136,16 @@ def _select_config(train_df, cat, num, measured_stats, task_ids, rng):
                               if pred[(tid, t)]["quality"][cfg["quality_kind"]] >= q_ref - cfg["delta"]]
                 if ref_tier not in feasible_t:
                     feasible_t.append(ref_tier)
-                # Tie-break toward the cheaper tier explicitly (see
-                # policy_optimizer.select_from_rows for why this must not be
-                # left to implicit iteration order).
-                chosen[tid] = min(feasible_t, key=lambda t: (pred[(tid, t)]["energy"][cfg["energy_kind"]],
-                                                               param_by_task_tier[(tid, t)]))
+                if selection_rule == "smallest_tier":
+                    chosen[tid] = min(feasible_t, key=lambda t: param_by_task_tier[(tid, t)])
+                elif selection_rule == "min_energy":
+                    # Tie-break toward the cheaper tier explicitly (see
+                    # policy_optimizer.select_from_rows for why this must
+                    # not be left to implicit iteration order).
+                    chosen[tid] = min(feasible_t, key=lambda t: (pred[(tid, t)]["energy"][cfg["energy_kind"]],
+                                                                   param_by_task_tier[(tid, t)]))
+                else:
+                    raise ValueError(f"unknown selection_rule: {selection_rule!r}")
 
         qdiffs = np.array([measured_stats[(tid, chosen[tid])]["quality"]
                             - measured_stats[(tid, ref_tiers[tid])]["quality"] for tid in task_ids])
@@ -159,7 +172,7 @@ def _select_config(train_df, cat, num, measured_stats, task_ids, rng):
     return min(feasible_configs, key=sort_key)
 
 
-def run_policy_evaluation(csv_path):
+def run_policy_evaluation(csv_path, selection_rule="min_energy"):
     df, task_tier, runs = load_experiment_frame(csv_path)
     cat, num = feature_columns(FEATURE_GROUPS)
     lookup = _lookup_rows(df)
@@ -174,7 +187,7 @@ def run_policy_evaluation(csv_path):
         train_tasks = train_df["task_id"].unique().tolist()
         test_tasks = test_df["task_id"].unique().tolist()
 
-        winner = _select_config(train_df, cat, num, measured_stats, train_tasks, rng)
+        winner = _select_config(train_df, cat, num, measured_stats, train_tasks, rng, selection_rule=selection_rule)
         winning_configs_log.append({"repeat": repeat, "fold": fold_idx,
                                      "energy_kind": winner["energy_kind"],
                                      "quality_kind": winner["quality_kind"],
@@ -191,7 +204,8 @@ def run_policy_evaluation(csv_path):
                 g = test_df[test_df["task_id"] == tid]
                 rows_by_tier = {t: g[g["model_tier"] == t].iloc[[0]] for t in g["model_tier"].unique()}
                 ref_tier = g["reference_tier"].iloc[0]
-                chosen_tier, diag = select_from_rows(rows_by_tier, ref_tier, winner["delta"], em, qm)
+                chosen_tier, diag = select_from_rows(rows_by_tier, ref_tier, winner["delta"], em, qm,
+                                                      selection_rule=selection_rule)
                 assert ref_tier in diag["feasible_tiers"], "predicted constraint violated — bug"
                 chosen_test[tid] = chosen_tier
 

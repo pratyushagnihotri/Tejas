@@ -1,0 +1,5 @@
+policy,energy_model,quality_model,quality_pct_change,pct_energy_saved,deployment
+Fixed downgrade,No,No,-33.75,80.64500246894457,dgx_llama
+Smallest predicted-safe,No,Yes,-0.25,1.3738858939265697,dgx_llama
+Tejas,Yes,Yes,-0.25,1.3738858939265697,dgx_llama
+Oracle,Measured,Measured,-1.875,58.32647534942643,dgx_llama

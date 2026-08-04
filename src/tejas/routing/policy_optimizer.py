@@ -21,10 +21,22 @@ boundary is >= tau.
 from tejas.cost_model.deployment_features import param_count_b
 
 
-def select_from_rows(rows_by_tier, reference_tier, delta, energy_model, quality_model, tau=None):
+def select_from_rows(rows_by_tier, reference_tier, delta, energy_model, quality_model, tau=None,
+                      selection_rule="min_energy"):
     """rows_by_tier: {model_tier: single-row DataFrame} for one task, one row
     per candidate tier (same task features, model_tier/param_count_b varying).
-    Returns (chosen_tier, diagnostics dict)."""
+    Returns (chosen_tier, diagnostics dict).
+
+    selection_rule picks which feasible tier to use once the quality gate
+    (delta) has narrowed the candidates down: "min_energy" (default) is
+    Tejas's actual policy, argmin predicted energy; "smallest_tier" ignores
+    the energy model entirely and picks the smallest feasible tier by
+    parameter count. The latter exists only for the ablation in
+    evaluate_policy.py/evaluate_budget.py that asks whether the energy
+    model contributes anything beyond "the quality gate already tells you
+    which tiers are safe, and the smallest of those is normally cheapest
+    anyway" — it is not part of Tejas's primary configuration.
+    """
     ref_param = param_count_b(rows_by_tier[reference_tier]["model_name"].iloc[0])
     q_ref = quality_model.predict_proba(rows_by_tier[reference_tier])[0]
 
@@ -38,14 +50,20 @@ def select_from_rows(rows_by_tier, reference_tier, delta, energy_model, quality_
             feasible_q[tier] = q
     assert reference_tier in feasible_q, "reference_tier must always be feasible by construction"
 
-    energies = {tier: float(energy_model.predict(rows_by_tier[tier])[0]) for tier in feasible_q}
     params = {tier: param_count_b(rows_by_tier[tier]["model_name"].iloc[0]) for tier in feasible_q}
-    # Tie-break ties (e.g. a constant/global-mean energy model predicts the
-    # same value for every tier) toward the cheaper tier explicitly, rather
-    # than leaving it to dict/argument insertion order — an implicit
-    # tie-break would silently reward a constant predictor whenever the
-    # smallest feasible tier happens to be iterated first.
-    best_tier = min(energies, key=lambda t: (energies[t], params[t]))
+    if selection_rule == "smallest_tier":
+        energies = {tier: float(energy_model.predict(rows_by_tier[tier])[0]) for tier in feasible_q}
+        best_tier = min(params, key=lambda t: params[t])
+    elif selection_rule == "min_energy":
+        energies = {tier: float(energy_model.predict(rows_by_tier[tier])[0]) for tier in feasible_q}
+        # Tie-break ties (e.g. a constant/global-mean energy model predicts the
+        # same value for every tier) toward the cheaper tier explicitly, rather
+        # than leaving it to dict/argument insertion order — an implicit
+        # tie-break would silently reward a constant predictor whenever the
+        # smallest feasible tier happens to be iterated first.
+        best_tier = min(energies, key=lambda t: (energies[t], params[t]))
+    else:
+        raise ValueError(f"unknown selection_rule: {selection_rule!r}")
 
     abstained = False
     if tau is not None and best_tier != reference_tier:

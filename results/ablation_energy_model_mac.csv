@@ -1,0 +1,5 @@
+policy,energy_model,quality_model,quality_pct_change,pct_energy_saved,deployment
+Fixed downgrade,No,No,1.875,39.86283130967383,mac
+Smallest predicted-safe,No,Yes,6.625,48.61228654993643,mac
+Tejas,Yes,Yes,6.625,48.61228654993643,mac
+Oracle,Measured,Measured,-1.875,66.52946485080777,mac
