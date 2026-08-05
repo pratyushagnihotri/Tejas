@@ -144,14 +144,7 @@ verify your environment reproduces the same numbers.
 
 ## Results and figures
 
-`results/` holds every raw and derived CSV this project has produced —
-raw per-(run, task, model) measurements, model-evaluation metrics, policy
-decisions, baseline comparisons, transfer/calibration results, the
-`budget_sweep_<deployment>.csv` / `budget_sweep_scarce_point_<deployment>.csv`
-files behind Figure 5, and `ablation_energy_model_<deployment>.csv` behind
-the energy-model ablation — so every number in the paper is independently
-checkable. Figures are regenerated from these CSVs rather than committed
-as binaries:
+The `results/` directory contains all raw and processed CSV files. These include measurements for each run, task, and model; model evaluation results; policy decisions; baseline comparisons; transfer and calibration results.
 
 ```bash
 .venv/bin/python3 analysis/plot_results.py            # per-experiment figures
