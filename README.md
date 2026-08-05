@@ -4,153 +4,383 @@
   <img src="tejas_logo.png" alt="Tejas Logo" width="600"/>
 </h1>
 
-This repository accompanies the vision paper **“Towards a Computation-by-Energy Execution Model for Energy-Native AI Data Systems.”**
+This repository contains the source code, measurements, evaluation scripts, and results for the vision paper **"Towards a Computation-by-Energy Execution Model for Energy-Native AI Data Systems."**
 
-Query optimizers traditionally assume that submitted workloads will execute and focus on selecting an efficient physical plan. We call this **computation-on-demand (CoD)**: the workload is fixed, and the optimizer decides how it runs. This execution model treats energy as a secondary objective. However, the growing energy demand of AI workloads makes it increasingly important for energy to influence execution decisions.
+## Overview
 
-We propose a vision for a new execution model called **computation-by-energy (CoE)**. Instead of asking only how a fixed workload should run, CoE also decides whether it should run now, later, elsewhere, or in an adapted form. Workload requirements and current or predicted energy state jointly determine the execution decision and physical plan. The paper describes the interfaces, optimizer decisions, runtime controls, and outcome records required to support CoE.
+Traditional query optimizers assume that every submitted workload must be executed. Their main task is to determine an efficient physical execution plan. We refer to this approach as **computation-on-demand (CoD)**: the workload is fixed, and the optimizer decides how to execute it.
 
-We present **Tejas** as an initial instantiation of CoE for energy-conditioned model routing. Tejas determines whether explicit energy state can change the selected model before inference while preserving a workload-quality requirement. Each permitted model tier represents an alternative computation with different energy and quality consequences.
+In this model, energy is usually treated as an additional cost metric rather than something that can change the execution decision itself. However, the increasing energy demand of AI workloads makes it important to consider whether a computation should be executed immediately, delayed, moved to another system, or adapted to use fewer resources.
 
-Across three inference deployments, Tejas reduces energy consumption by up to **48.6%**. Quality improves on one deployment and changes by less than half a percentage point on the other two. In contrast, applying the same fixed model downgrade to every request causes large quality losses on deployments with wider differences between model tiers.
+The paper introduces **computation-by-energy (CoE)**. In CoE, workload requirements and the current or expected energy state are considered together. The system can decide:
 
-Three deployments, real measured energy throughout:
+* whether the workload should run,
+* when it should run,
+* where it should run,
+* which implementation or model should be used, and
+* whether the workload should be adapted to reduce energy consumption.
 
-| Experiment | Model ladder (small/medium/large) | Hardware | Energy measurement |
-|---|---|---|---|
-| Mac | Qwen2.5 3b / 7b / 14b | Apple M4 Pro (unified SoC) | `powermetrics` — whole-package power |
-| DGX-Qwen | Qwen2.5 3b / 7b / 32b | 1× NVIDIA A100-40GB | `nvidia-smi` — GPU die only |
-| DGX-Llama | Llama3 3b / 8b / 70b | 2× NVIDIA A100-40GB | `nvidia-smi` — GPU die only |
+The paper describes the interfaces, optimizer decisions, runtime controls, and execution records needed to support this model.
 
-## The four pillars
+## Tejas prototype
 
-| Pillar | Package | What it does |
-|---|---|---|
-| 1. Measurement | [`src/tejas/measurement/`](src/tejas/measurement/) | Real energy measurement: `powermetrics` (macOS) / `nvidia-smi` (DGX), trapezoidal integration to joules per request |
-| 2. Benchmarking | [`src/tejas/benchmarking/`](src/tejas/benchmarking/) | 40-task harness (24 DB/SQL tasks + 16 [SemBench](https://github.com/SemBench/SemBench)-derived semantic-reasoning tasks), grading, and the experiment runner — the offline calibration workload and measurement store |
-| 3. Cost modeling | [`src/tejas/cost_model/`](src/tejas/cost_model/) | Learned `E_hat(task, model, deployment)` / `Q_hat(task, model, deployment)` ladders (the decision models / model builder), validated with repeated nested grouped cross-validation |
-| 4. Routing | [`src/tejas/routing/`](src/tejas/routing/) | Contract interface, energy-state manager, policy optimizer (quality-constrained and energy-budgeted), three measured oracles, and bootstrap-CI'd evaluation of both policies |
+**Tejas** is an initial proof of concept for computation-by-energy. It focuses on energy-aware model routing for AI inference.
 
-## Install
+For each request, Tejas chooses among several model sizes. Each model has different energy consumption and output quality. Tejas uses the workload requirements and the available energy information to select a model before inference begins.
 
-**Requirements**: Python ≥3.9, `git`. GPU deployments additionally need
-[Ollama](https://ollama.com) and (for the DGX experiments) a Slurm
-cluster with `nvidia-smi`; the Mac deployment needs `sudo` access for
-`powermetrics`. None of this is required just to inspect the code,
-reproduce the published numbers from the committed CSVs, or regenerate
-figures — only to collect new energy measurements yourself.
+The goal is to reduce energy consumption while satisfying a required quality level.
+
+Across three inference deployments, Tejas reduces energy consumption by up to **48.6%**. Quality improves on one deployment and changes by less than half a percentage point on the other two. By comparison, using the same smaller model for every request causes large quality losses when the differences between model sizes are significant.
+
+## Experimental deployments
+
+We evaluated Tejas on three deployments. Energy consumption was measured directly during every experiment.
+
+| Experiment | Available models        | Hardware                         | Energy measurement                            |
+| ---------- | ----------------------- | -------------------------------- | --------------------------------------------- |
+| Mac        | Qwen2.5 3B, 7B, and 14B | Apple M4 Pro with unified memory | `powermetrics`, measuring whole-package power |
+| DGX-Qwen   | Qwen2.5 3B, 7B, and 32B | 1× NVIDIA A100 40 GB             | `nvidia-smi`, measuring GPU power             |
+| DGX-Llama  | Llama 3B, 8B, and 70B   | 2× NVIDIA A100 40 GB             | `nvidia-smi`, measuring GPU power             |
+
+The Mac measurements cover the complete system package. The DGX measurements cover GPU power only.
+
+## Repository structure
+
+The main source code is located under [`src/tejas/`](src/tejas/).
+
+| Directory                                            | Description                                                                                                                                                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`src/tejas/measurement/`](src/tejas/measurement/)   | Collects power measurements using `powermetrics` on macOS and `nvidia-smi` on NVIDIA systems. It integrates the power samples over time to calculate the energy used by each request.                               |
+| [`src/tejas/benchmarking/`](src/tejas/benchmarking/) | Contains the benchmark tasks, grading logic, and experiment runner. The benchmark includes 24 database and SQL tasks and 16 semantic-reasoning tasks derived from [SemBench](https://github.com/SemBench/SemBench). |
+| [`src/tejas/cost_model/`](src/tejas/cost_model/)     | Trains and evaluates models that predict energy consumption and output quality for a given task, model, and deployment.                                                                                             |
+| [`src/tejas/routing/`](src/tejas/routing/)           | Contains the routing policies, energy-state handling, optimization logic, baselines, oracle policies, and policy-evaluation code.                                                                                   |
+| [`analysis/`](analysis/)                             | Contains scripts for generating the figures used in the paper.                                                                                                                                                      |
+| [`results/`](results/)                               | Contains the raw measurements and processed evaluation results.                                                                                                                                                     |
+| [`slurm/`](slurm/)                                   | Contains the Slurm configuration used for the DGX experiments.                                                                                                                                                      |
+
+## Installation
+
+### Requirements
+
+The basic requirements are:
+
+* Python 3.9 or newer
+* Git
+
+Additional software is needed only when collecting new measurements:
+
+* [Ollama](https://ollama.com) for running the language models
+* `sudo` access to `powermetrics` for macOS energy measurements
+* a Slurm cluster with `nvidia-smi` for the DGX experiments
+
+These additional requirements are not needed to inspect the source code, reproduce the reported results from the existing CSV files, or regenerate the figures.
+
+Clone and install the repository:
 
 ```bash
 git clone https://github.com/pratyushagnihotri/Tejas.git
 cd Tejas
+
 python3 -m venv .venv
 source .venv/bin/activate
+
 pip install -e .
 ```
 
-This installs the `tejas` package in editable mode from `src/tejas/`
-plus its dependencies (numpy, scipy, pandas, scikit-learn, matplotlib —
-pinned versions in `pyproject.toml`). Editable install means changes to
-the source under `src/tejas/` take effect immediately, no reinstall
-needed. Console-script shortcuts are also installed alongside the
-`python -m tejas.<module>` form used throughout this README:
-`tejas-run-experiment`, `tejas-evaluate-models`, `tejas-evaluate-policy`,
-`tejas-cross-family-transfer`, `tejas-fewshot-calibration`,
-`tejas-static-policies`.
+This installs the `tejas` package and its dependencies in editable mode. The main dependencies include NumPy, SciPy, pandas, scikit-learn, and Matplotlib. Exact versions are listed in `pyproject.toml`.
 
-**Verify the install** — every module has a self-check, so this both
-confirms the environment is set up correctly and reproduces a published
-number from a clean checkout, with no measurements or GPU access needed:
+With an editable installation, changes made under `src/tejas/` are available immediately without reinstalling the package.
 
-```bash
-.venv/bin/python3 -m tejas.cost_model.task_features   # feature-extraction self-check
-.venv/bin/python3 -m tejas.routing.oracle              # reproduces the Mac oracle numbers from committed CSVs
-```
+The installation also provides the following command-line programs:
 
-**If you only want to re-collect energy measurements** (not required —
-`results/` already has everything the paper reports):
+* `tejas-run-experiment`
+* `tejas-evaluate-models`
+* `tejas-evaluate-policy`
+* `tejas-cross-family-transfer`
+* `tejas-fewshot-calibration`
+* `tejas-static-policies`
 
-- On macOS, `run_experiment.py` needs `sudo` to read `powermetrics`; use
-  `--no-energy` to smoke-test the harness without root.
-- On the DGX deployments, submit via Slurm — see
-  [`slurm/run_experiment.slurm`](slurm/run_experiment.slurm) for the
-  `sbatch` invocation and required `--gres`/`--export` flags per model
-  family.
-- Either way, [Ollama](https://ollama.com) must be running locally with
-  the relevant models already pulled (`qwen2.5:3b-instruct`, `7b`, `14b`
-  / `32b`, or `llama3.2:3b`, `llama3.1:8b`, `llama3.3:70b`, depending on
-  which family you're running).
+The examples below use the equivalent `python -m tejas.<module>` form.
 
-## Quickstart per pillar
+## Run with Docker
 
-All results already exist in `results/` (see below) — none of this needs
-to be re-run to reproduce the paper's numbers from the published CSVs.
-These are the commands that produced them.
-
-**1. Run the benchmark harness** (needs [Ollama](https://ollama.com) running
-locally with the relevant models pulled):
+A `Dockerfile` and `docker-compose.yml` are included to run `Tejas` in a local environment. This path only needs [Docker](https://docs.docker.com/get-docker/) installed and running.
 
 ```bash
-.venv/bin/python3 -m tejas.benchmarking.run_experiment --no-energy --limit 3   # smoke test, no sudo
-sudo .venv/bin/python3 -m tejas.benchmarking.run_experiment --repeats 4         # full run, real energy (macOS)
+git clone https://github.com/pratyushagnihotri/Tejas.git
+cd Tejas
+
+docker build -t tejas .
+docker run --rm tejas
 ```
 
-DGX runs use `--family qwen-dgx` / `--family llama` under Slurm — see
-[`slurm/run_experiment.slurm`](slurm/run_experiment.slurm).
+The image installs `tejas` and its dependencies, and the default command reproduces the same two checks as the "Verify the installation" section below: task-feature extraction and the Mac oracle results, computed from the CSV files already committed in `results/`.
 
-**2. Simulate the fixed baselines** (`static-cost-router`, `Tejas-Fixed`,
-calibrated threshold — table lookup over already-collected results, no
-re-run needed):
+Any other command in this README can be run the same way, by replacing `.venv/bin/python3` with `docker run --rm tejas python`, for example:
+
+```bash
+docker run --rm tejas python -m tejas.routing.static_policies
+docker run --rm tejas python -m tejas.routing.evaluate_policy
+docker run --rm tejas python -m tejas.routing.evaluate_budget
+```
+
+For an interactive shell inside the container:
+
+```bash
+docker run --rm -it tejas bash
+```
+
+`docker-compose.yml` mounts `src/`, `results/`, and `analysis/` from the host into the container, so code changes and generated figures are visible on disk without rebuilding the image:
+
+```bash
+docker compose run --rm tejas bash
+```
+
+Like the local install, this covers everything that only needs the CSV files already in `results/`: self-checks, baseline and routing evaluation, and figure generation. Collecting *new* energy measurements still needs `powermetrics` or `nvidia-smi` running directly on the host — that part is out of scope for the container.
+
+## Verify the installation
+
+The following commands check that the environment is set up correctly:
+
+```bash
+.venv/bin/python3 -m tejas.cost_model.task_features
+.venv/bin/python3 -m tejas.routing.oracle
+```
+
+The first command checks the task-feature extraction code. The second command reproduces the Mac oracle results using the CSV files included in the repository.
+
+No GPU access or new energy measurements are required for these checks.
+
+## Reproduce the experiments
+
+All results reported in the paper are already available under `results/`. The commands in this section show how those results were produced.
+
+### 1. Run a small benchmark test
+
+The following command runs three tasks without collecting energy measurements:
+
+```bash
+.venv/bin/python3 -m tejas.benchmarking.run_experiment \
+  --no-energy \
+  --limit 3
+```
+
+This is useful for checking that the benchmark and Ollama connection work correctly.
+
+### 2. Run the complete benchmark on macOS
+
+```bash
+sudo .venv/bin/python3 -m tejas.benchmarking.run_experiment \
+  --repeats 4
+```
+
+This command uses `powermetrics` to collect real energy measurements and therefore requires `sudo`.
+
+### 3. Run the benchmark on DGX
+
+DGX experiments use the `qwen-dgx` or `llama` model family:
+
+```bash
+--family qwen-dgx
+```
+
+or:
+
+```bash
+--family llama
+```
+
+The experiments should be submitted through Slurm. See [`slurm/run_experiment.slurm`](slurm/run_experiment.slurm) for the complete `sbatch` command and the required `--gres` and `--export` settings.
+
+## Model requirements
+
+Ollama must be running locally when collecting new inference measurements. The required models must also be downloaded before starting an experiment.
+
+Depending on the deployment, the models are:
+
+```text
+qwen2.5:3b-instruct
+qwen2.5:7b-instruct
+qwen2.5:14b-instruct
+qwen2.5:32b-instruct
+llama3.2:3b
+llama3.1:8b
+llama3.3:70b
+```
+
+The exact models needed depend on the selected model family and deployment.
+
+## Evaluate the baselines
+
+The following command evaluates the fixed routing baselines using the measurements already stored in `results/`:
 
 ```bash
 .venv/bin/python3 -m tejas.routing.static_policies
 ```
 
-**3. Fit and validate the cost model:**
+The evaluated baselines include:
+
+* `static-cost-router`
+* `Tejas-Fixed`
+* the calibrated-threshold policy
+
+This step uses existing measurements and does not run the language models again.
+
+## Train and evaluate the prediction models
+
+Run the following commands to train and evaluate the energy and quality prediction models:
 
 ```bash
-.venv/bin/python3 -m tejas.cost_model.evaluate_models       # prediction-quality metrics, 5x5 nested CV
-.venv/bin/python3 -m tejas.cost_model.verification_checks   # leakage + ablation spot-checks
-.venv/bin/python3 -m tejas.cost_model.cross_family_transfer # DGX-Qwen <-> DGX-Llama transfer
-.venv/bin/python3 -m tejas.cost_model.fewshot_calibration   # target-deployment adaptation curves
+.venv/bin/python3 -m tejas.cost_model.evaluate_models
+.venv/bin/python3 -m tejas.cost_model.verification_checks
+.venv/bin/python3 -m tejas.cost_model.cross_family_transfer
+.venv/bin/python3 -m tejas.cost_model.fewshot_calibration
 ```
 
-**4. Evaluate quality-constrained routing** (`Tejas-Learned`) against the
-baselines and the strict / quality-budget oracles:
+These commands perform the following evaluations:
+
+| Command                 | Purpose                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `evaluate_models`       | Evaluates energy and quality prediction accuracy using repeated nested grouped cross-validation.   |
+| `verification_checks`   | Checks for data leakage and runs selected ablation tests.                                          |
+| `cross_family_transfer` | Evaluates transfer between the DGX-Qwen and DGX-Llama deployments.                                 |
+| `fewshot_calibration`   | Evaluates how a model adapts to a new deployment using a small number of calibration measurements. |
+
+## Evaluate quality-constrained routing
+
+The following command evaluates the learned Tejas routing policy:
 
 ```bash
 .venv/bin/python3 -m tejas.routing.evaluate_policy
 ```
 
-**5. Evaluate energy-budgeted routing** across a sweep of budgets (100%
-down to 40% of static), against `Tejas-Fixed` and the energy-budget
-oracle — this is Figure 5 in the paper:
+It compares `Tejas-Learned` with the fixed baselines and the measured oracle policies.
+
+The policy selects the lowest-energy model that is predicted to satisfy the required quality constraint.
+
+## Evaluate energy-budgeted routing
+
+The following command evaluates routing under different energy budgets:
 
 ```bash
 .venv/bin/python3 -m tejas.routing.evaluate_budget
 ```
 
-**6. Ablation**: does the energy model contribute anything beyond the
-quality gate, or does "pick the smallest predicted-safe tier" already do
-just as well?
+The evaluation considers budgets ranging from 100% to 40% of the energy consumed by the static large-model policy.
+
+It compares:
+
+* `Tejas-Learned`
+* `Tejas-Fixed`
+* the energy-budget oracle
+
+The results from this experiment are used to generate Figure 5 in the paper.
+
+## Run the energy-model ablation
+
+The following command tests whether the learned energy model improves routing decisions:
 
 ```bash
 .venv/bin/python3 -m tejas.routing.ablation_energy_model
 ```
 
-Every module above also has a `python -m tejas.<pillar>.<module>` self-check
-(most were built with one from the start) — run any of them directly to
-verify your environment reproduces the same numbers.
+This experiment compares the complete Tejas policy with a simpler policy that selects the smallest model predicted to satisfy the quality requirement.
 
-## Results and figures
+The purpose is to determine whether explicit energy prediction provides an advantage beyond the quality constraint alone.
 
-The `results/` directory contains all raw and processed CSV files. These include measurements for each run, task, and model; model evaluation results; policy decisions; baseline comparisons; transfer and calibration results.
+## Collect new energy measurements
+
+Collecting new measurements is optional because the repository already includes the results reported in the paper.
+
+### macOS
+
+The experiment runner requires `sudo` to access `powermetrics`:
 
 ```bash
-.venv/bin/python3 analysis/plot_results.py            # per-experiment figures
-.venv/bin/python3 analysis/plot_cross_experiment.py   # Mac vs. DGX-Qwen vs. DGX-Llama
-.venv/bin/python3 analysis/plot_ieee_routing.py        # IEEE-style paper figures, routing
-.venv/bin/python3 analysis/plot_ieee_cost_model.py     # IEEE-style paper figures, cost model
-.venv/bin/python3 analysis/plot_ieee_evaluation.py     # prediction accuracy, transfer, calibration figures
-.venv/bin/python3 analysis/plot_ieee_budget.py         # Figure 5: quality achieved across energy budgets
+sudo .venv/bin/python3 -m tejas.benchmarking.run_experiment
 ```
+
+To test the benchmark without measuring energy, use:
+
+```bash
+.venv/bin/python3 -m tejas.benchmarking.run_experiment --no-energy
+```
+
+### DGX and other NVIDIA systems
+
+Use the provided Slurm script:
+
+[`slurm/run_experiment.slurm`](slurm/run_experiment.slurm)
+
+The script contains the GPU resource requirements and environment settings used for the DGX experiments.
+
+## Results
+
+The [`results/`](results/) directory contains all raw and processed CSV files generated by the project.
+
+These files include:
+
+* measurements for each run, task, and model,
+* energy and quality prediction results,
+* routing decisions,
+* baseline comparisons,
+* oracle results,
+* cross-deployment transfer results,
+* few-shot calibration results,
+* energy-budget evaluations, and
+* ablation-study results.
+
+The files:
+
+```text
+budget_sweep_<deployment>.csv
+budget_sweep_scarce_point_<deployment>.csv
+```
+
+contain the results used to generate Figure 5.
+
+The files:
+
+```text
+ablation_energy_model_<deployment>.csv
+```
+
+contain the results from the energy-model ablation study.
+
+Every numerical result reported in the paper can therefore be checked using the committed CSV files.
+
+## Generate the figures
+
+The paper figures are generated from the CSV files in `results/`. They are not stored as pre-generated binary files.
+
+Run the following commands to regenerate them:
+
+```bash
+.venv/bin/python3 analysis/plot_results.py
+.venv/bin/python3 analysis/plot_cross_experiment.py
+.venv/bin/python3 analysis/plot_ieee_routing.py
+.venv/bin/python3 analysis/plot_ieee_cost_model.py
+.venv/bin/python3 analysis/plot_ieee_evaluation.py
+.venv/bin/python3 analysis/plot_ieee_budget.py
+```
+
+The scripts generate:
+
+| Script                     | Output                                                            |
+| -------------------------- | ------------------------------------------------------------------|
+| `plot_results.py`          | Figures for each individual deployment                            |
+| `plot_cross_experiment.py` | Comparison of Mac, DGX-Qwen, and DGX-Llama                        |
+| `plot_ieee_routing.py`     | Paper figures for routing-policy results                          |
+| `plot_ieee_cost_model.py`  | Paper figures for energy and quality prediction                   |
+| `plot_ieee_evaluation.py`  | Figures for prediction accuracy, model transfer, and calibration  |
+| `plot_ieee_budget.py`      | Figure 5, showing achieved quality under different energy budgets |
+
+## Running individual checks
+
+Most modules can also be executed directly:
+
+```bash
+python -m tejas.<package>.<module>
+```
+
+Many modules include a small self-check that verifies their main functionality and confirms that the stored results can be reproduced.

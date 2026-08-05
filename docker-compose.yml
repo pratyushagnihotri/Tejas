@@ -1,0 +1,12 @@
+services:
+  tejas:
+    build: .
+    image: tejas:local
+    # Mount source and results read-write so you can edit code on the
+    # host and rerun inside the container without rebuilding the image.
+    volumes:
+      - ./src:/app/src
+      - ./results:/app/results
+      - ./analysis:/app/analysis
+    stdin_open: true
+    tty: true

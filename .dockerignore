@@ -1,0 +1,17 @@
+.git
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+*.egg-info
+build
+dist
+.DS_Store
+company.db
+
+# Regenerable from results/*.csv inside the container — excluding keeps
+# the build context and image small; run analysis/plot_*.py to rebuild.
+results/figures
+
+slurm
+tejas_logo.png
