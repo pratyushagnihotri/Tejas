@@ -4,7 +4,7 @@
   <img src="tejas_logo.png" alt="Tejas Logo" width="600"/>
 </h1>
 
-This repository contains the source code, measurements, evaluation scripts, and results for the vision paper **"Towards a Computation-by-Energy Execution Model for Energy-Native AI Data Systems."**
+This repository contains the source code, measurements, evaluation scripts, and results for the vision paper.
 
 ## Overview
 
