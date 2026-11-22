@@ -1,38 +1,59 @@
-# Tejas — A Proof of Concept for Computation-by-Energy
+# Tejas — Towards Energy-Native Semantic Data Systems
 
 <h1 align="center">
   <img src="tejas_logo.png" alt="Tejas Logo" width="600"/>
 </h1>
 
-This repository contains the source code, measurements, evaluation scripts, and results for the vision paper.
+This repository contains the code and measurements for the vision paper
+*Towards Energy-Native Semantic Data Systems*. It has two parts:
+
+* [`probes/`](probes/): the cross-engine benchmark data and the feasibility probes (see [Feasibility probes](#feasibility-probes-for-energy-native-semantic-data-systems)).
+* [`src/tejas/`](src/tejas/): **Tejas**, a prototype for quality-aware, energy-aware model routing
+  (see [Tejas prototype](#tejas-prototype)).
 
 ## Overview
 
-Traditional query optimizers assume that every submitted workload must be executed. Their main task is to determine an efficient physical execution plan. We refer to this approach as **computation-on-demand (CoD)**: the workload is fixed, and the optimizer decides how to execute it.
+Semantic data systems extend query processing with operators that call large language models (LLMs) to
+filter, join, classify, and transform data with natural-language predicates. Today, the query engine
+and the LLM serving system are optimized separately. The DBMS knows the query structure: predicates,
+projections, `LIMIT`, cardinalities, and which results could be reused. The serving system knows
+batching efficiency, model residency, KV-cache state, and accelerator load. Energy depends on both, so
+neither layer can minimize it alone.
 
-In this model, energy is usually treated as an additional cost metric rather than something that can change the execution decision itself. However, the increasing energy demand of AI workloads makes it important to consider whether a computation should be executed immediately, delayed, moved to another system, or adapted to use fewer resources.
+The paper argues that the DBMS and the LLM serving infrastructure should be co-designed around one
+objective: minimizing the energy needed to *produce, maintain, and reuse useful semantic knowledge*,
+subject to the workload's requirements on quality, latency, and freshness. It proposes four
+architectural shifts:
 
-The paper introduces **computation-by-energy (CoE)**. In CoE, workload requirements and the current or expected energy state are considered together. The system can decide:
+1. **Semantic reuse and materialization.** Model-derived results become managed state that the system
+   can reuse, transform, refresh, or recompute, including reuse through predicate relationships that a
+   prompt cache cannot see.
+2. **Quality–energy optimization.** The optimizer chooses the model, semantic implementation, and
+   approximation under an explicit quality contract, with energy as the objective.
+3. **Joint DBMS–LLM execution.** Query-plan properties (`LIMIT`, projection, predicate order) and serving
+   properties (batching, model residency, inference state) are decided together.
+4. **Energy-native workload orchestration.** Deferrable semantic work, such as refreshing
+   materializations, runs when energy is cheaper or cleaner, or not at all when existing results are
+   still fresh enough.
 
-* whether the workload should run,
-* when it should run,
-* where it should run,
-* which implementation or model should be used, and
-* whether the workload should be adapted to reduce energy consumption.
-
-The paper describes the interfaces, optimizer decisions, runtime controls, and execution records needed to support this model.
+The paper supports these premises with a cross-engine benchmark of six existing semantic query engines
+and one controlled probe per shift. On SemBench Q1, correct answers from existing engines differ by up
+to 513× in energy.
 
 ## Tejas prototype
 
-**Tejas** is an initial proof of concept for computation-by-energy. It focuses on energy-aware model routing for AI inference.
+**Tejas** implements one piece of the second shift: energy-aware model routing for LLM inference.
 
-For each request, Tejas chooses among several model sizes. Each model has different energy consumption and output quality. Tejas uses the workload requirements and the available energy information to select a model before inference begins.
+For each request, Tejas chooses among several model sizes. Each model has different energy consumption
+and output quality. Tejas predicts both from pre-inference features and selects the lowest-energy model
+that is predicted to meet the required quality, before inference begins.
 
-The goal is to reduce energy consumption while satisfying a required quality level.
+Across three inference deployments, Tejas reduces energy consumption by up to **48.6%**. Quality improves
+on one deployment and changes by less than half a percentage point on the other two. By comparison,
+using the same smaller model for every request causes large quality losses when the differences between
+model sizes are significant. Probe P1 applies the same routing idea to semantic predicates on SemBench.
 
-Across three inference deployments, Tejas reduces energy consumption by up to **48.6%**. Quality improves on one deployment and changes by less than half a percentage point on the other two. By comparison, using the same smaller model for every request causes large quality losses when the differences between model sizes are significant.
-
-## Experimental deployments
+## Tejas experimental deployments
 
 We evaluated Tejas on three deployments. Energy consumption was measured directly during every experiment.
 
@@ -44,6 +65,45 @@ We evaluated Tejas on three deployments. Energy consumption was measured directl
 
 The Mac measurements cover the complete system package. The DGX measurements cover GPU power only.
 
+## Feasibility probes for Energy-Native Semantic Data Systems
+
+[`probes/`](probes/) contains the code and data behind the paper's evidence: a cross-engine benchmark of
+existing semantic query engines and one controlled probe per architectural shift (see [Overview](#overview)).
+
+### Probes
+
+The controlled probes use SemBench Movie and Qwen2.5 models served by vLLM on one NVIDIA A100-40GB.
+They report GPU energy from the NVML cumulative energy counter, with an idle baseline.
+
+| Probe | Shift | Question | Code | Slurm job |
+| ----- | ----- | -------- | ---- | --------- |
+| P1 | Quality–energy optimization | Does the energy-optimal model that meets the quality contract differ per tuple and query? (Tejas-style router, cascade, oracle) | [`p1_tejas_sembench/`](probes/p1_tejas_sembench/) | `slurm/p1_tiers.sbatch` |
+| P2 | Joint DBMS–LLM execution | What does query-plan knowledge (LIMIT, projection, predicate order, wave size) save beyond vLLM batching and prefix caching? | [`p2_plan_aware/`](probes/p2_plan_aware/) | `slurm/p2_vllm.sbatch` |
+| P3 | Semantic reuse | Can the DBMS reuse semantic results through predicate relationships where an LLM cache cannot? | [`p3_semantic_reuse/`](probes/p3_semantic_reuse/) | `slurm/p3_vllm.sbatch` |
+| P4 | Workload orchestration | Can deferrable semantic maintenance exploit time-varying grid carbon intensity? (trace-driven) | [`p4_temporal/`](probes/p4_temporal/) | runs on a laptop |
+
+Shared helpers for data loading, LLM calls, and energy measurement are in [`probes/common/`](probes/common/).
+[`probes/README.md`](probes/README.md) describes the strategies of each probe and how to run them on the DGX.
+
+### Cross-engine benchmark data
+
+[`probes/data/`](probes/data/) contains the measured results of the cross-engine benchmark:
+
+* six semantic query engines run unmodified (LOTUS, Palimpzest, ThalamusDB, CAESURA, Stretto, and Abacus as implemented in Stretto),
+* four SemBench Movie queries (Q1, Q2, Q4, Q5) over 1,000 reviews,
+* ten local 4-bit models (Qwen2.5, Llama 3, Gemma 3; 1B–32B) served by Ollama on one A100-40GB per run.
+
+Energy is GPU energy including idle power plus the job's share of CPU package energy (RAPL). An answer
+counts as correct if its SemBench `score` is at least 0.8.
+
+| File | Content |
+| ---- | ------- |
+| `cross_engine_local.csv` | All 264 single-model runs (240 engine × model × query configurations) |
+| `cross_engine_qwen7b_q1q5.csv` | Qwen2.5-7B, Q1 and Q5, all repetitions |
+| `de_2025_hourly.csv`, `raw_*.json` | Hourly German grid carbon intensity and day-ahead price for 2025 (Energy-Charts), used by P4 |
+
+[`probes/data/SOURCE.md`](probes/data/SOURCE.md) documents the provenance of each file.
+
 ## Repository structure
 
 The main source code is located under [`src/tejas/`](src/tejas/).
@@ -54,9 +114,10 @@ The main source code is located under [`src/tejas/`](src/tejas/).
 | [`src/tejas/benchmarking/`](src/tejas/benchmarking/) | Contains the benchmark tasks, grading logic, and experiment runner. The benchmark includes 24 database and SQL tasks and 16 semantic-reasoning tasks derived from [SemBench](https://github.com/SemBench/SemBench). |
 | [`src/tejas/cost_model/`](src/tejas/cost_model/)     | Trains and evaluates models that predict energy consumption and output quality for a given task, model, and deployment.                                                                                             |
 | [`src/tejas/routing/`](src/tejas/routing/)           | Contains the routing policies, energy-state handling, optimization logic, baselines, oracle policies, and policy-evaluation code.                                                                                   |
-| [`analysis/`](analysis/)                             | Contains scripts for generating the figures used in the paper.                                                                                                                                                      |
+| [`analysis/`](analysis/)                             | Contains scripts for generating the Tejas evaluation figures.                                                                                                                                                       |
 | [`results/`](results/)                               | Contains the raw measurements and processed evaluation results.                                                                                                                                                     |
 | [`slurm/`](slurm/)                                   | Contains the Slurm configuration used for the DGX experiments.                                                                                                                                                      |
+| [`probes/`](probes/)                                 | Feasibility probes and cross-engine benchmark data for *Towards Energy-Native Semantic Data Systems*. See [Feasibility probes](#feasibility-probes-for-energy-native-semantic-data-systems). |
 
 ## Installation
 
@@ -153,7 +214,7 @@ No GPU access or new energy measurements are required for these checks.
 
 ## Reproduce the experiments
 
-All results reported in the paper are already available under `results/`. The commands in this section show how those results were produced.
+All Tejas results are already available under `results/`. The commands in this section show how those results were produced.
 
 ### 1. Run a small benchmark test
 
@@ -274,7 +335,7 @@ It compares:
 * `Tejas-Fixed`
 * the energy-budget oracle
 
-The results from this experiment are used to generate Figure 5 in the paper.
+The results from this experiment are used to generate the energy-budget figure (`plot_ieee_budget.py`).
 
 ## Run the energy-model ablation
 
@@ -290,7 +351,7 @@ The purpose is to determine whether explicit energy prediction provides an advan
 
 ## Collect new energy measurements
 
-Collecting new measurements is optional because the repository already includes the results reported in the paper.
+Collecting new measurements is optional because the repository already includes all Tejas results.
 
 ### macOS
 
@@ -337,7 +398,7 @@ budget_sweep_<deployment>.csv
 budget_sweep_scarce_point_<deployment>.csv
 ```
 
-contain the results used to generate Figure 5.
+contain the results used to generate the energy-budget figure.
 
 The files:
 
@@ -347,11 +408,11 @@ ablation_energy_model_<deployment>.csv
 
 contain the results from the energy-model ablation study.
 
-Every numerical result reported in the paper can therefore be checked using the committed CSV files.
+Every Tejas result can therefore be checked using the committed CSV files.
 
-## Generate the figures
+## Generate the Tejas figures
 
-The paper figures are generated from the CSV files in `results/`. They are not stored as pre-generated binary files.
+The Tejas figures are generated from the CSV files in `results/`. They are not stored as pre-generated binary files.
 
 Run the following commands to regenerate them:
 
@@ -370,10 +431,10 @@ The scripts generate:
 | -------------------------- | ------------------------------------------------------------------|
 | `plot_results.py`          | Figures for each individual deployment                            |
 | `plot_cross_experiment.py` | Comparison of Mac, DGX-Qwen, and DGX-Llama                        |
-| `plot_ieee_routing.py`     | Paper figures for routing-policy results                          |
-| `plot_ieee_cost_model.py`  | Paper figures for energy and quality prediction                   |
+| `plot_ieee_routing.py`     | Figures for routing-policy results                                |
+| `plot_ieee_cost_model.py`  | Figures for energy and quality prediction                         |
 | `plot_ieee_evaluation.py`  | Figures for prediction accuracy, model transfer, and calibration  |
-| `plot_ieee_budget.py`      | Figure 5, showing achieved quality under different energy budgets |
+| `plot_ieee_budget.py`      | Achieved quality under different energy budgets                   |
 
 ## Running individual checks
 
