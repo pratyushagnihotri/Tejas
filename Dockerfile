@@ -1,7 +1,7 @@
 # Tejas — container for local testing (CPU only).
 #
 # Everything that doesn't need Ollama or a GPU works here: self-checks,
-# reproducing the paper's numbers from the committed CSVs in results/,
+# reproducing the Tejas results from the committed CSVs in results/,
 # and regenerating figures. Collecting *new* energy measurements needs
 # powermetrics (macOS) or nvidia-smi (DGX) directly on the host — that
 # part is out of scope for this image, matching the README's own
@@ -17,7 +17,7 @@ COPY pyproject.toml requirements.txt ./
 COPY src ./src
 COPY results ./results
 COPY analysis ./analysis
-COPY docs ./docs
+COPY probes ./probes
 COPY README.md ./
 
 RUN pip install --no-cache-dir -e .

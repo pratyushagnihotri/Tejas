@@ -11,5 +11,10 @@ company.db
 results/figures/
 results/*
 !results/*.csv
+!results/README.md
 docs/
 src/tejas.egg-info
+
+# Probe raw outputs and local environments stay out of the repo
+probes/results/
+probes/.venv/

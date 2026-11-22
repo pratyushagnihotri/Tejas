@@ -12,6 +12,7 @@ company.db
 # Regenerable from results/*.csv inside the container — excluding keeps
 # the build context and image small; run analysis/plot_*.py to rebuild.
 results/figures
+probes/results
 
 slurm
 tejas_logo.png

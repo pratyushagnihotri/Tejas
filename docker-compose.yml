@@ -8,5 +8,6 @@ services:
       - ./src:/app/src
       - ./results:/app/results
       - ./analysis:/app/analysis
+      - ./probes:/app/probes
     stdin_open: true
     tty: true

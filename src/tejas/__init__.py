@@ -1,7 +1,9 @@
 """Tejas: energy-aware LLM routing driven by a learned energy/quality cost
-model, built as a proof of concept for computation-by-energy.
+model. Tejas is the model-routing component of the quality-energy optimization
+shift in "Towards Energy-Native Semantic Data Systems": for each request it
+picks the lowest-energy model predicted to meet the quality requirement.
 
-Four subpackages, matching the four building blocks described in the paper:
+Four subpackages:
 - tejas.measurement   -- real per-request energy measurement (Mac/DGX)
 - tejas.benchmarking  -- the task suite and harness that runs models against
   tasks and records measured outcomes

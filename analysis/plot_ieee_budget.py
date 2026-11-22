@@ -2,7 +2,7 @@
 energy budget available (as a fraction of static-cost-router's total),
 one panel per deployment. This is the figure that shows behavior actually
 tracking *how much* energy is available, not just a single before/after
-scarcity toggle — the bridge between Tejas and computation-by-energy's
+scarcity toggle — the bridge between Tejas and the energy-native
 claim that energy availability should be an input to the decision, not a
 binary switch.
 

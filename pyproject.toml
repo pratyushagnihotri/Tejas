@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tejas"
 version = "0.1.0"
-description = "Energy-aware LLM inference routing: measurement, benchmarking, cost modeling, and routing for computation-by-energy."
+description = "Energy-aware LLM inference routing: measurement, benchmarking, cost modeling, and routing (part of Towards Energy-Native Semantic Data Systems)."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [

@@ -1,8 +1,8 @@
 """Budget-vs-quality frontier: what does the router do at 100/90/.../40% of
 static-cost-router's energy, not just at the single delta the main routing
 result (evaluate_policy.py) settles on? This is the bridge from "Tejas saves
-energy within a fixed quality budget" to computation-by-energy's actual
-claim that behavior should track *how much* energy is available.
+energy within a fixed quality budget" to the energy-native claim that
+behavior should track *how much* energy is available.
 
 Per outer fold, the energy/quality model kinds are chosen once by the same
 standalone-accuracy procedure evaluate_models.py uses (inner-OOF MAE/log-loss)

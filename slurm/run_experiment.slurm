@@ -9,8 +9,11 @@
 # llama needs 2 GPUs (70B at 4-bit is ~44GB, doesn't fit one 40GB A100).
 # Getting --gres wrong for the family will fail at model-load time, not at
 # submission — check nvidia-smi in the log if a job dies partway through.
+#
+# Slurm does not create the log directory: run `mkdir -p logs` before sbatch,
+# otherwise the job fails without writing any output.
 
-#SBATCH --job-name=sustainableai
+#SBATCH --job-name=tejas
 #SBATCH --partition=batch
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
